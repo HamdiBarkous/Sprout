@@ -1,0 +1,27 @@
+[project]
+name = "sprout"
+version = "0.1.0"
+description = "A pi-creature-inspired mascot character for ManimCE: 14 expression modes, gaze tracking, speech bubbles, and a leaf that is always alive."
+readme = "README.md"
+authors = [
+    { name = "Hamdi Barkous", email = "hamdibarkous10@gmail.com" }
+]
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["manim", "animation", "character", "mascot", "pi-creature"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Multimedia :: Video",
+]
+dependencies = [
+    "manim>=0.21",
+]
+
+[project.urls]
+Repository = "https://github.com/HamdiBarkous/Sprout"
+
+[build-system]
+requires = ["uv_build>=0.10.8,<0.11.0"]
+build-backend = "uv_build"
