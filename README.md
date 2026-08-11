@@ -129,6 +129,8 @@ Design rules the generator encodes (the anti-clipart rules):
 
 - Character concept and design: Hamdi Barkous, for the
   [Frame Zero](https://www.youtube.com/@Frame-zero-yt) channel.
+- Designed and implemented in collaboration with
+  [Claude](https://claude.com/claude-code) (Anthropic's Claude Opus).
 - Deeply inspired by Grant Sanderson's pi creatures from
   [3Blue1Brown](https://www.3blue1brown.com/); the speech/thought bubble
   shapes are 3b1b's hand-drawn SVGs.
