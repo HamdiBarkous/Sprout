@@ -34,6 +34,7 @@ from __future__ import annotations
 import math
 import random
 from collections.abc import Iterable
+from itertools import pairwise
 from pathlib import Path
 
 import numpy as np
@@ -139,15 +140,68 @@ class _BubbleBase(SVGMobject):
         if content is not None and content != "":
             self.add_content(content)
 
+    # Rows at least this wide (as a fraction of the widest row) count as
+    # the balloon proper. The tail is narrower and drops out.
+    BODY_ROW = 0.55
+
     # subclass hooks
     def _tail_anchor(self) -> np.ndarray:
         raise NotImplementedError
 
-    def _body_center(self) -> np.ndarray:
-        raise NotImplementedError
-
     def _body_size(self) -> tuple[float, float]:
         raise NotImplementedError
+
+    def _outline_points(self) -> np.ndarray:
+        """The bubble shape, densely sampled. Content is excluded, so this
+        measures the drawing rather than whatever was written inside it."""
+        pts = []
+        for part in self.submobjects:
+            if part is self.content:
+                continue
+            for sub in part.family_members_with_points():
+                p = sub.points
+                for i in range(0, len(p) - 3, 4):
+                    a, b, c, d = p[i : i + 4]
+                    for t in np.linspace(0.0, 1.0, 10):
+                        u = 1.0 - t
+                        pts.append(
+                            u**3 * a + 3 * u * u * t * b + 3 * u * t * t * c + t**3 * d
+                        )
+        return np.array(pts)
+
+    def _body_center(self) -> np.ndarray:
+        """Where content goes: the center of the balloon proper, measured.
+
+        Scans the shape row by row and keeps the rows at least BODY_ROW as
+        wide as the widest one, which is the balloon with the tail (and a
+        thought bubble's trailing dots) excluded. Fixed offsets were used
+        here before and could not be right: they left short lines visibly
+        off-center, and pushed the text the wrong way on flipped bubbles.
+        Measuring also means a custom bubble SVG lands its text correctly
+        without touching this class.
+        """
+        pts = self._outline_points()
+        ys = pts[:, 1]
+        rows = np.linspace(ys.min(), ys.max(), 64)
+        widths, lows, highs = [], [], []
+        for y0, y1 in pairwise(rows):
+            in_row = (ys >= y0) & (ys < y1)
+            if in_row.sum() < 2:  # a row the outline barely touches
+                widths.append(0.0)
+                lows.append(np.nan)
+                highs.append(np.nan)
+                continue
+            xs = pts[in_row, 0]
+            widths.append(float(xs.max() - xs.min()))
+            lows.append(float(xs.min()))
+            highs.append(float(xs.max()))
+        widths = np.array(widths)
+        body = widths >= self.BODY_ROW * widths.max()
+        x0 = np.nanmin(np.array(lows)[body])
+        x1 = np.nanmax(np.array(highs)[body])
+        y0 = rows[:-1][body].min()
+        y1 = rows[1:][body].max()
+        return np.array([0.5 * (x0 + x1), 0.5 * (y0 + y1), 0.0])
 
     # API
     def add_content(self, content: str | Mobject, font_size: int = 28) -> _BubbleBase:
@@ -209,11 +263,6 @@ class SpeechBubble(_BubbleBase):
         idx = pts[:, 1].argmin()  # bottom-most point of the path
         return pts[idx].copy()
 
-    def _body_center(self) -> np.ndarray:
-        cx, cy, _ = self.get_center()
-        offset_x = 0.15 * self.width * (-1 if self._is_flipped else 1)
-        return np.array([cx + offset_x, cy + 0.20 * self.height, 0.0])
-
     def _body_size(self) -> tuple[float, float]:
         return (0.65 * self.width, 0.55 * self.height)
 
@@ -228,11 +277,8 @@ class ThoughtBubble(_BubbleBase):
         # Smallest descending dot is submobject[2].
         return self.submobjects[2].get_center().copy()
 
-    def _body_center(self) -> np.ndarray:
-        return self.submobjects[3].get_center().copy()
-
     def _body_size(self) -> tuple[float, float]:
-        body = self.submobjects[3]
+        body = self.submobjects[3]  # the cloud, minus the descending dots
         return (body.width, body.height)
 
 
